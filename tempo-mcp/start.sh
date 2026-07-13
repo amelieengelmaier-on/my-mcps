@@ -1,5 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")"
 set -a
-source "$(dirname "$0")/.env"
+source .env
 set +a
-exec /opt/homebrew/bin/node --import tsx/esm "$(dirname "$0")/index.ts"
+exec /opt/homebrew/bin/node --import tsx/esm index.ts
