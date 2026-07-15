@@ -6,6 +6,9 @@ import { z } from 'zod';
 const TEMPO_TOKEN = process.env.TEMPO_API_TOKEN;
 const ACCOUNT_ID = process.env.TEMPO_ACCOUNT_ID;
 const DEFAULT_ACCOUNT_KEY = process.env.TEMPO_ACCOUNT_KEY ?? 'CSW_WS02';
+const JIRA_BASE_URL   = process.env.JIRA_BASE_URL;
+const JIRA_USER_EMAIL = process.env.JIRA_USER_EMAIL;
+const JIRA_API_TOKEN  = process.env.JIRA_API_TOKEN;
 
 if (!TEMPO_TOKEN) { console.error('Missing TEMPO_API_TOKEN'); process.exit(1); }
 if (!ACCOUNT_ID)  { console.error('Missing TEMPO_ACCOUNT_ID');  process.exit(1); }
@@ -59,6 +62,30 @@ async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+/**
+ * Resolves a Jira issue key (e.g. "COP-123") to its numeric issue ID.
+ * Tempo API v4 requires issueId (integer), not issueKey.
+ */
+async function resolveIssueId(issueKey: string): Promise<number> {
+  if (!JIRA_BASE_URL || !JIRA_USER_EMAIL || !JIRA_API_TOKEN) {
+    throw new Error(
+      'Missing Jira credentials (JIRA_BASE_URL, JIRA_USER_EMAIL, JIRA_API_TOKEN). ' +
+      'Add them to .env so issue keys can be resolved to numeric IDs for Tempo.',
+    );
+  }
+  const auth = Buffer.from(`${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}`).toString('base64');
+  const res = await fetch(
+    `${JIRA_BASE_URL}/rest/api/3/issue/${issueKey}?fields=id`,
+    { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' } },
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Jira ${res.status} resolving ${issueKey}: ${text}`);
+  }
+  const data = await res.json() as { id: string };
+  return parseInt(data.id, 10);
+}
+
 // — server —
 const server = new McpServer({ name: 'tempo-mcp', version: '1.0.0' });
 
@@ -79,14 +106,15 @@ server.registerTool(
   },
   async ({ issueKey, timeSpent, description, date, accountKey }) => {
     const seconds = parseTime(timeSpent);
+    const issueId = await resolveIssueId(issueKey);
     const body = {
-      issueKey,
+      issueId,
       timeSpentSeconds: seconds,
       startDate: date ?? today(),
       startTime: nowTime(),
       authorAccountId: ACCOUNT_ID,
       ...(description ? { description } : {}),
-      attributes: [{ key: '_Account_', value: accountKey ?? DEFAULT_ACCOUNT_KEY }],
+      attributes: [{ key: '_CAPEXCode_', value: accountKey ?? DEFAULT_ACCOUNT_KEY }],
     };
 
     const data = await apiJson<{ tempoWorklogId: number }>(
@@ -168,7 +196,7 @@ server.registerTool(
     const current = await apiJson<any>(`/worklogs/${worklogId}`);
 
     const body = {
-      issueKey:         current.issue?.key,
+      issueId:          current.issue?.id,
       timeSpentSeconds: timeSpent ? parseTime(timeSpent) : current.timeSpentSeconds,
       startDate:        date ?? current.startDate,
       startTime:        current.startTime ?? '09:00:00',
@@ -198,6 +226,21 @@ server.registerTool(
       throw new Error(`Tempo ${res.status}: ${text}`);
     }
     return { content: [{ type: 'text' as const, text: `🗑️ Deleted worklog ${worklogId}.` }] };
+  },
+);
+
+server.registerTool(
+  'list_work_attributes',
+  {
+    description: 'List all Tempo work attributes and their keys (useful for finding the correct account/CapEx attribute key).',
+    inputSchema: z.object({}),
+  },
+  async () => {
+    const data = await apiJson<{ results: any[] }>('/work-attributes');
+    const lines = (data.results ?? []).map((a: any) =>
+      `key: ${a.key}  name: ${a.name}  type: ${a.type}`,
+    );
+    return { content: [{ type: 'text' as const, text: lines.join('\n') || 'No work attributes found.' }] };
   },
 );
 
