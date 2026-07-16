@@ -6,6 +6,8 @@ Personal MCP servers.
 
 ## tempo-mcp
 
+Wanna just see how it works? Look [here](https://www.loom.com/share/abce116afa5e4ab2b470e0ef5c1bb214)!
+
 Tempo time tracking MCP — log, view, edit, and delete Tempo worklogs directly from OpenCode (or any MCP-compatible client).
 
 ### Prerequisites
