@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node --import tsx/esm index.ts"
+    "start": "node --import tsx/esm index.ts",
+    "check": "tsc --noEmit && node check-no-default-account-key.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

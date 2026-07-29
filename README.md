@@ -31,7 +31,6 @@ Edit `tempo-mcp/.env`:
 ```env
 TEMPO_API_TOKEN=       # Tempo API token
 TEMPO_ACCOUNT_ID=      # Your Atlassian account ID
-TEMPO_ACCOUNT_KEY=     # Default CapEx account key (e.g. CSW_WS02)
 
 JIRA_BASE_URL=         # e.g. https://your-org.atlassian.net
 JIRA_USER_EMAIL=       # Your Atlassian login email
@@ -44,12 +43,11 @@ JIRA_API_TOKEN=        # Atlassian API token
 |---|---|
 | `TEMPO_API_TOKEN` | Tempo → **Settings** → **API Integration** → **New Token** (scopes: *View worklogs* + *Manage worklogs*) |
 | `TEMPO_ACCOUNT_ID` | Open `https://<your-org>.atlassian.net/rest/api/3/myself` in a browser while logged in → copy the `accountId` field |
-| `TEMPO_ACCOUNT_KEY` | Tempo → **Log time** → **Account** dropdown → note the key shown next to your account (e.g. `CSW_WS02`). See note below if you log to multiple CapEx codes. |
 | `JIRA_BASE_URL` | Your Atlassian site URL, e.g. `https://your-org.atlassian.net` |
 | `JIRA_USER_EMAIL` | The email you use to log in to Atlassian |
 | `JIRA_API_TOKEN` | [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens) → **Create API token** |
 
-> **CapEx code — known limitation:** `TEMPO_ACCOUNT_KEY` is a single static value baked into every worklog. This works fine if you always log to one CapEx code. If you split time across multiple codes, you'll need to override `accountKey` per call — or wrap the MCP in a skill that picks the right code based on the Jira ticket/project. That's not implemented yet; PRs welcome.
+> **CapEx code:** `tempo_log_time` requires `accountKey` on every call. Use the `capex-time-logging` skill below to review Jira's `CAPEX?` and `CAPEX Code` fields first, then pass the confirmed code explicitly.
 
 ### OpenCode setup
 
@@ -74,7 +72,7 @@ Restart OpenCode — the `tempo_*` tools will appear in the tool list.
 
 | Tool | Description |
 |---|---|
-| `tempo_log_time` | Log time to a Jira issue |
+| `tempo_log_time` | Log time to a Jira issue with an explicit reviewed `accountKey` |
 | `tempo_get_my_worklogs` | List your worklogs (defaults to current week) |
 | `tempo_get_issue_worklogs` | List all worklogs on a specific issue |
 | `tempo_update_worklog` | Update time, description, or date on an existing worklog |
@@ -84,11 +82,23 @@ Restart OpenCode — the `tempo_*` tools will appear in the tool list.
 ### Usage examples
 
 ```
-log 2h on COP-123 — refactoring the auth flow
+log 2h on COP-123 with accountKey CSW_WS02 — refactoring the auth flow
 show my worklogs for this week
 update worklog 98765 to 1h30m
 delete worklog 98765
 ```
+
+### Review-first CapEx logging skill
+
+This repo includes an OpenCode skill at `skills/capex-time-logging/SKILL.md`.
+Install it by copying that folder to `~/.config/opencode/skills/` or adding this repo's `skills` directory to `skills.paths`.
+
+The skill makes Jira the source of truth before Tempo logging:
+
+1. Fetches `customfield_17056` (`CAPEX?`) and `customfield_17057` (`CAPEX Code`).
+2. Shows the existing eligible code, or lists available Jira field metadata options when the code is absent.
+3. Shows the exact Jira field update and Tempo write calls as a dry run.
+4. Waits for explicit user confirmation before setting `CAPEX?`, setting `CAPEX Code`, or calling `tempo_log_time`.
 
 ### Goes further with the session-processing skill
 
@@ -110,7 +120,7 @@ The MCP works great on its own, but if you use OpenCode with an Obsidian-based s
    Log it? (yes / no / edit)
    ```
 
-3. **Logs it and sets CAPEX fields** on the Jira issue in one shot — no separate manual step.
+3. **Reviews CAPEX fields first** — the skill shows `CAPEX?`, `CAPEX Code`, and the exact Jira/Tempo writes before anything changes.
 4. **Marks the session note** with `tempo-logged: true` so it never double-logs.
 
 The result: you write code, you say "process session", you confirm one prompt. Done. Time is logged, Jira is updated, session is archived.

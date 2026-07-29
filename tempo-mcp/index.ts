@@ -5,7 +5,6 @@ import { z } from 'zod';
 // — env —
 const TEMPO_TOKEN = process.env.TEMPO_API_TOKEN;
 const ACCOUNT_ID = process.env.TEMPO_ACCOUNT_ID;
-const DEFAULT_ACCOUNT_KEY = process.env.TEMPO_ACCOUNT_KEY ?? 'CSW_WS02';
 const JIRA_BASE_URL   = process.env.JIRA_BASE_URL;
 const JIRA_USER_EMAIL = process.env.JIRA_USER_EMAIL;
 const JIRA_API_TOKEN  = process.env.JIRA_API_TOKEN;
@@ -94,14 +93,13 @@ server.registerTool(
   {
     description:
       'Log time to a Jira issue in Tempo. ' +
-      'accountKey defaults to the env TEMPO_ACCOUNT_KEY (CSW_WS02 for Amelie) — ' +
-      'override it if you found a different capex code on the Jira ticket.',
+      'Requires an explicit accountKey copied from the reviewed Jira CAPEX Code field.',
     inputSchema: z.object({
       issueKey:   z.string().describe('Jira issue key, e.g. ON-123'),
       timeSpent:  z.string().describe('Time spent: "2h", "30m", "1h30m", "1.5h"'),
       description: z.string().optional().describe('What you worked on'),
       date:        z.string().optional().describe('YYYY-MM-DD, defaults to today'),
-      accountKey:  z.string().optional().describe(`CapEx account key, defaults to ${DEFAULT_ACCOUNT_KEY}`),
+      accountKey:  z.string().describe('Reviewed CapEx account key, e.g. CSW_WS02'),
     }),
   },
   async ({ issueKey, timeSpent, description, date, accountKey }) => {
@@ -114,7 +112,7 @@ server.registerTool(
       startTime: nowTime(),
       authorAccountId: ACCOUNT_ID,
       ...(description ? { description } : {}),
-      attributes: [{ key: '_CAPEXCode_', value: accountKey ?? DEFAULT_ACCOUNT_KEY }],
+      attributes: [{ key: '_CAPEXCode_', value: accountKey }],
     };
 
     const data = await apiJson<{ tempoWorklogId: number }>(
@@ -141,15 +139,15 @@ server.registerTool(
     const startDate = from ?? weekStart();
     const endDate   = to   ?? today();
 
-    const data = await apiJson<{ results: any[] }>(
+    const data = await apiJson<{ readonly results?: readonly { readonly tempoWorklogId: number; readonly startDate: string; readonly timeSpentSeconds: number; readonly description?: string; readonly issue?: { readonly key?: string } }[] }>(
       `/worklogs/user/${ACCOUNT_ID}?from=${startDate}&to=${endDate}&limit=50`,
     );
 
     const worklogs = data.results ?? [];
     if (!worklogs.length) return { content: [{ type: 'text' as const, text: `No worklogs between ${startDate} and ${endDate}.` }] };
 
-    const total = worklogs.reduce((s: number, w: any) => s + w.timeSpentSeconds, 0);
-    const lines = worklogs.map((w: any) =>
+    const total = worklogs.reduce((s, w) => s + w.timeSpentSeconds, 0);
+    const lines = worklogs.map((w) =>
       `[${w.tempoWorklogId}] ${w.startDate}  ${w.issue?.key ?? '?'}  ${fmt(w.timeSpentSeconds)}${w.description ? `  — ${w.description}` : ''}`,
     );
     lines.push(`\nTotal: ${fmt(total)} across ${worklogs.length} entr${worklogs.length === 1 ? 'y' : 'ies'}`);
@@ -167,12 +165,12 @@ server.registerTool(
     }),
   },
   async ({ issueKey }) => {
-    const data = await apiJson<{ results: any[] }>(`/issues/${issueKey}/worklogs?limit=50`);
+    const data = await apiJson<{ readonly results?: readonly { readonly tempoWorklogId: number; readonly startDate: string; readonly timeSpentSeconds: number; readonly description?: string; readonly author?: { readonly accountId?: string; readonly displayName?: string } }[] }>(`/issues/${issueKey}/worklogs?limit=50`);
     const worklogs = data.results ?? [];
     if (!worklogs.length) return { content: [{ type: 'text' as const, text: `No worklogs for ${issueKey}.` }] };
 
-    const total = worklogs.reduce((s: number, w: any) => s + w.timeSpentSeconds, 0);
-    const lines = worklogs.map((w: any) =>
+    const total = worklogs.reduce((s, w) => s + w.timeSpentSeconds, 0);
+    const lines = worklogs.map((w) =>
       `[${w.tempoWorklogId}] ${w.startDate}  ${w.author?.displayName ?? w.author?.accountId ?? '?'}  ${fmt(w.timeSpentSeconds)}${w.description ? `  — ${w.description}` : ''}`,
     );
     lines.push(`\nTotal: ${fmt(total)}`);
@@ -193,7 +191,10 @@ server.registerTool(
     }),
   },
   async ({ worklogId, timeSpent, description, date }) => {
-    const current = await apiJson<any>(`/worklogs/${worklogId}`);
+    const current = await apiJson<{ readonly issue?: { readonly id?: number }; readonly timeSpentSeconds: number; readonly startDate: string; readonly startTime?: string; readonly author?: { readonly accountId?: string }; readonly description?: string; readonly attributes?: readonly { readonly key: string; readonly value: string }[] | { readonly values?: readonly { readonly key: string; readonly value: string }[] } }>(`/worklogs/${worklogId}`);
+    const attributes = Array.isArray(current.attributes)
+      ? current.attributes
+      : current.attributes?.values ?? [];
 
     const body = {
       issueId:          current.issue?.id,
@@ -202,7 +203,7 @@ server.registerTool(
       startTime:        current.startTime ?? '09:00:00',
       authorAccountId:  current.author?.accountId ?? ACCOUNT_ID,
       description:      description ?? current.description ?? '',
-      attributes:       current.attributes?.values ?? current.attributes ?? [],
+      attributes,
     };
 
     await apiJson(`/worklogs/${worklogId}`, { method: 'PUT', body: JSON.stringify(body) });
@@ -236,8 +237,8 @@ server.registerTool(
     inputSchema: z.object({}),
   },
   async () => {
-    const data = await apiJson<{ results: any[] }>('/work-attributes');
-    const lines = (data.results ?? []).map((a: any) =>
+    const data = await apiJson<{ readonly results?: readonly { readonly key: string; readonly name: string; readonly type: string }[] }>('/work-attributes');
+    const lines = (data.results ?? []).map((a) =>
       `key: ${a.key}  name: ${a.name}  type: ${a.type}`,
     );
     return { content: [{ type: 'text' as const, text: lines.join('\n') || 'No work attributes found.' }] };
