@@ -80,7 +80,7 @@ Restart OpenCode — the `tempo_*` tools will appear in the tool list.
 ### Usage examples
 
 ```
-log 2h on COP-123 with accountKey <confirmed-account-key> — refactoring the auth flow
+log 2h on the current Jira ticket with accountKey <confirmed-account-key> — refactoring the auth flow
 show my worklogs for this week
 update worklog 98765 to 1h30m
 delete worklog 98765
@@ -93,10 +93,11 @@ Install it by copying that folder to `~/.config/opencode/skills/` or adding this
 
 The skill makes Jira the source of truth before Tempo logging:
 
-1. Fetches the locally configured `CAPEX?` and `CAPEX Code` Jira fields.
-2. Shows the Jira CAPEX Code and discovers/selects the corresponding Tempo account key without assuming a hardcoded mapping.
-3. Shows the exact Jira field update and Tempo write calls as a dry run.
-4. Waits for explicit user confirmation before setting `CAPEX?`, setting `CAPEX Code`, or calling `tempo_log_time`.
+1. Resolves the Jira ticket from the current repository/session context, then asks you to confirm it.
+2. Fetches the locally configured `CAPEX?` and `CAPEX Code` Jira fields and requires explicit CAPEX Code confirmation.
+3. Shows the Jira CAPEX Code and discovers/selects the corresponding Tempo account key without assuming a hardcoded mapping.
+4. Shows the exact Jira field update and Tempo write calls as a dry run.
+5. Waits for explicit user confirmation before setting `CAPEX?`, setting `CAPEX Code`, or calling `tempo_log_time`.
 
 ### Goes further with the session-processing skill
 
