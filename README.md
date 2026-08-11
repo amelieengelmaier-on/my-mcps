@@ -45,7 +45,7 @@ JIRA_API_TOKEN=        # Atlassian API token
 | `JIRA_USER_EMAIL` | The email you use to log in to Atlassian |
 | `JIRA_API_TOKEN` | [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens) → **Create API token** |
 
-> **CapEx code:** `tempo_log_time` requires `accountKey` on every call. Use the `capex-time-logging` skill below to review Jira's `CAPEX?` and `CAPEX Code` fields first, then pass the confirmed code explicitly.
+> **CapEx initiative:** `tempo_log_time` requires a `Tempo accountKey` on every call. Use the `capex-time-logging` skill to review Jira's `CAPEX?` and `CAPEX Code`, discover/select the corresponding Tempo account key, and confirm the pair per issue. Do not hardcode initiative mappings.
 
 ### OpenCode setup
 
@@ -70,7 +70,7 @@ Restart OpenCode — the `tempo_*` tools will appear in the tool list.
 
 | Tool | Description |
 |---|---|
-| `tempo_log_time` | Log time to a Jira issue with an explicit reviewed `accountKey` |
+| `tempo_log_time` | Log time to a Jira issue with an explicit confirmed Tempo `accountKey` |
 | `tempo_get_my_worklogs` | List your worklogs (defaults to current week) |
 | `tempo_get_issue_worklogs` | List all worklogs on a specific issue |
 | `tempo_update_worklog` | Update time, description, or date on an existing worklog |
@@ -80,7 +80,7 @@ Restart OpenCode — the `tempo_*` tools will appear in the tool list.
 ### Usage examples
 
 ```
-log 2h on COP-123 with accountKey CSW_WS02 — refactoring the auth flow
+log 2h on COP-123 with accountKey <confirmed-account-key> — refactoring the auth flow
 show my worklogs for this week
 update worklog 98765 to 1h30m
 delete worklog 98765
@@ -93,8 +93,8 @@ Install it by copying that folder to `~/.config/opencode/skills/` or adding this
 
 The skill makes Jira the source of truth before Tempo logging:
 
-1. Fetches `customfield_17056` (`CAPEX?`) and `customfield_17057` (`CAPEX Code`).
-2. Shows the existing eligible code, or lists available Jira field metadata options when the code is absent.
+1. Fetches the locally configured `CAPEX?` and `CAPEX Code` Jira fields.
+2. Shows the Jira CAPEX Code and discovers/selects the corresponding Tempo account key without assuming a hardcoded mapping.
 3. Shows the exact Jira field update and Tempo write calls as a dry run.
 4. Waits for explicit user confirmation before setting `CAPEX?`, setting `CAPEX Code`, or calling `tempo_log_time`.
 
@@ -104,7 +104,7 @@ The MCP works great on its own, but if you use OpenCode with an Obsidian-based s
 
 **The idea:** at the end of a coding session you say _"process session"_. The skill:
 
-1. **Computes active time automatically** — it reads the real OpenCode message timestamps for that session and subtracts idle gaps over 20 minutes from the wall-clock duration. No more guessing "was that 2h or 3h?".
+1. **Computes active time automatically** — it reads the real OpenCode message timestamps for that session and subtracts idle gaps over 60 minutes from the wall-clock duration. No more guessing "was that 2h or 3h?".
 2. **Proposes the Tempo entry for your approval** — it pulls the Jira ticket and time from your session note's frontmatter, drafts a description from your session summary, and shows you exactly what it's about to log before touching anything:
 
    ```
@@ -112,7 +112,7 @@ The MCP works great on its own, but if you use OpenCode with an Obsidian-based s
      Ticket:      COP-123
      Date:        2026-07-16
      Time:        1h43m
-     Account:     CSW_WS02
+     Account:     <confirmed-account-key>
      Description: Refactored auth middleware to remove race condition
 
    Log it? (yes / no / edit)
