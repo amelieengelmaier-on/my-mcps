@@ -93,13 +93,13 @@ server.registerTool(
   {
     description:
       'Log time to a Jira issue in Tempo. ' +
-      'Requires an explicit accountKey copied from the reviewed Jira CAPEX Code field.',
+      'Requires an explicit Tempo accountKey selected for the reviewed Jira CAPEX initiative.',
     inputSchema: z.object({
       issueKey:   z.string().describe('Jira issue key, e.g. ON-123'),
       timeSpent:  z.string().describe('Time spent: "2h", "30m", "1h30m", "1.5h"'),
       description: z.string().optional().describe('What you worked on'),
       date:        z.string().optional().describe('YYYY-MM-DD, defaults to today'),
-      accountKey:  z.string().describe('Reviewed CapEx account key, e.g. CSW_WS02'),
+      accountKey:  z.string().describe('Confirmed Tempo account key for this CAPEX initiative'),
     }),
   },
   async ({ issueKey, timeSpent, description, date, accountKey }) => {
