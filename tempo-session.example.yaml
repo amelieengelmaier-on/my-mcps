@@ -1,0 +1,10 @@
+vault_path: ~/Documents/brain
+sessions_rel_path: 20-work/sessions
+dev_root: ~/Development
+gap_threshold_minutes: 60
+timezone: Europe/Zurich
+subtract_calendar_meetings: true
+tempo_account_key: ""
+jira_capex_fields:
+  capex: ""
+  code: ""
