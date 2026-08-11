@@ -5,24 +5,24 @@ description: Review-first Jira CapEx and Tempo time logging. Use when logging ti
 
 # CapEx Time Logging
 
-Use Jira as the source of truth. Never infer a financial code from ticket text, project key, summary, branch name, or memory.
+Use Jira as the source of truth for the CAPEX initiative. Never infer a financial code or Tempo account key from ticket text, project key, summary, branch name, or memory. A Jira CAPEX Code and Tempo account key are related initiative identifiers, but they are not assumed to be identical.
 
 ## Required Jira fields
 
-- `customfield_17056`: `CAPEX?`
-- `customfield_17057`: `CAPEX Code`
+- Read the local `jira_capex_fields.capex` and `jira_capex_fields.code` values
+  from `~/.config/opencode/tempo-session.yaml`; do not assume field IDs.
 
 ## Workflow
 
 1. Fetch the Jira issue with at least these fields:
    - `summary`
    - `status`
-   - `customfield_17056`
-   - `customfield_17057`
+    - the configured CapEx field ID
+    - the configured CapEx code field ID
 2. Fetch the parent issue key, if any.
 3. If `CAPEX Code` is empty, query sibling issues with `parent = <parent key>` and these fields:
-   - `customfield_17056`
-   - `customfield_17057`
+    - the configured CapEx field ID
+    - the configured CapEx code field ID
    - issue key
    - Keep only siblings where `CAPEX?` is `Yes` and `CAPEX Code` is non-empty.
    - If all eligible siblings agree on one code, suggest that code with evidence: sibling keys and the matching code.
@@ -30,7 +30,7 @@ Use Jira as the source of truth. Never infer a financial code from ticket text, 
    - If there is no parent, or no eligible classified siblings, do not guess.
 4. Read the CapEx state:
    - If `CAPEX?` is `Yes` and `CAPEX Code` has a value, show that code as eligible.
-   - If `CAPEX Code` is empty, fetch Jira field metadata for the issue type and show the available `customfield_17057` options if metadata exposes them.
+   - If `CAPEX Code` is empty, fetch Jira field metadata for the issue type and show available options if metadata exposes them.
    - If metadata does not expose options, ask the user to choose the exact code.
 5. Prepare a dry-run summary before writes:
    - Jira issue key
@@ -38,11 +38,16 @@ Use Jira as the source of truth. Never infer a financial code from ticket text, 
    - Current `CAPEX Code`
    - Proposed Jira field update, if needed
    - Suggested code only as a suggestion, with sibling keys and matching code
-   - Proposed `tempo_log_time` call, including the exact `accountKey`
-6. Wait for explicit user confirmation before each write:
+    - Proposed `tempo_log_time` call, including the exact confirmed Tempo `accountKey`
+ 6. Wait for explicit user confirmation before each write:
    - setting `CAPEX?` to `Yes`
    - setting `CAPEX Code` to the selected value
-   - calling `tempo_log_time`
+    - calling `tempo_log_time`
+
+7. If the Jira CAPEX Code is known but the Tempo account key is not, call
+   `tempo_list_work_attributes` to discover available Tempo values. Ask the
+   user to confirm the Jira CAPEX Code and corresponding Tempo account key as a
+   pair. Never create a hardcoded mapping table.
 
 ## Write shapes
 
@@ -51,8 +56,8 @@ Only use the exact value the user confirmed.
 ```json
 {
   "fields": {
-    "customfield_17056": { "value": "Yes" },
-    "customfield_17057": { "value": "CSW_WS02" }
+    "<configured-capex-field-id>": { "value": "Yes" },
+    "<configured-capex-code-field-id>": { "value": "<confirmed-code>" }
   }
 }
 ```
@@ -63,15 +68,15 @@ Only use the exact value the user confirmed.
   "timeSpent": "2h",
   "description": "Worked on reviewed scope",
   "date": "2026-07-29",
-  "accountKey": "CSW_WS02"
+  "accountKey": "<confirmed-account-key>"
 }
 ```
 
-If Jira returns a different field shape for `customfield_17057`, preserve that shape and replace only the confirmed value.
+If Jira returns a different field shape, preserve that shape and replace only the confirmed value.
 
 ## Hard stops
 
-- Do not log time without an explicit `accountKey`.
+- Do not log time without an explicit confirmed Tempo `accountKey`.
 - Do not set either CapEx field without confirmation.
 - Do not auto-pick from multiple codes.
 - Do not use project-prefix mappings.
