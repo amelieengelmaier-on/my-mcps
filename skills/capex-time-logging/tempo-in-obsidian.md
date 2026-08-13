@@ -21,20 +21,24 @@ tempo-worklog-id: ""
 
 ## Processing flow
 
-1. Read the session note and derive the Jira ticket, duration, date, and description.
-2. Resolve and confirm the Jira issue if the note does not contain a confirmed ticket.
-3. Run the `capex-time-logging` review before any Tempo or Jira write.
-4. Show one dry-run summary containing the ticket, date, duration, description, CapEx state, and confirmed Tempo `accountKey`.
-5. Wait for explicit approval. `yes` writes; `edit` revises the proposal; `no` leaves the note unchanged.
-6. Call `tempo_log_time` only with the confirmed account key.
-7. After a successful write, update the note with:
+1. Read the session note and derive the Jira ticket, date, and description.
+2. Automatically call `calculate_session_time` with the OpenCode session
+   timestamps. If Calendar subtraction is enabled and available, include the
+   eligible Calendar events in the same call. Use its `total_seconds` and
+   `by_day` result for the duration.
+3. Resolve and confirm the Jira issue if the note does not contain a confirmed ticket.
+4. Run the `capex-time-logging` review before any Tempo or Jira write.
+5. Show one dry-run summary containing the ticket, date, duration, description, CapEx state, and confirmed Tempo `accountKey`.
+6. Wait for explicit approval. `yes` writes; `edit` revises the proposal; `no` leaves the note unchanged.
+7. Call `tempo_log_time` only with the confirmed account key.
+8. After a successful write, update the note with:
 
 ```yaml
 tempo-logged: true
 tempo-worklog-id: "<returned-worklog-id>"
 ```
 
-8. If the write fails, leave `tempo-logged: false`, preserve the note, and report the failure for retry.
+9. If the calculator or write fails, leave `tempo-logged: false`, preserve the note, and report the failure for retry.
 
 ## Configuration
 

@@ -73,6 +73,7 @@ Restart OpenCode — the `tempo_*` tools will appear in the tool list.
 | Tool | Description |
 |---|---|
 | `tempo_log_time` | Log time to a Jira issue with an explicit confirmed Tempo `accountKey` |
+| `calculate_session_time` | Calculate active session time and subtract supplied meeting overlaps |
 | `tempo_get_my_worklogs` | List your worklogs (defaults to current week) |
 | `tempo_get_issue_worklogs` | List all worklogs on a specific issue |
 | `tempo_update_worklog` | Update time, description, or date on an existing worklog |

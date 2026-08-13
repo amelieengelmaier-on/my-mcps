@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import json
 import sys
+from typing import Optional
 
 
 def _parse(value: str) -> datetime:
@@ -10,7 +11,7 @@ def _parse(value: str) -> datetime:
 def calculate_time(
     timestamps: list[str],
     gap_threshold_minutes: int = 60,
-    meetings: list[dict] | None = None,
+    meetings: Optional[list[dict]] = None,
 ) -> dict:
     points = sorted({_parse(value) for value in timestamps})
     by_day: dict[str, int] = {}

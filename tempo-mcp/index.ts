@@ -1,5 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 // — env —
@@ -14,6 +16,26 @@ if (!ACCOUNT_ID)  { console.error('Missing TEMPO_ACCOUNT_ID');  process.exit(1);
 
 // — helpers —
 const BASE = 'https://api.tempo.io/4';
+const SESSION_TIME_SCRIPT = fileURLToPath(new URL('./session_time.py', import.meta.url));
+
+function calculateSessionTime(payload: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.env.PYTHON ?? 'python3', [SESSION_TIME_SCRIPT]);
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Session-time calculator failed: ${stderr || `exit code ${code}`}`));
+        return;
+      }
+      resolve(stdout.trim());
+    });
+    child.stdin.end(payload);
+  });
+}
 
 function api(path: string, init: RequestInit = {}) {
   return fetch(`${BASE}${path}`, {
@@ -87,6 +109,28 @@ async function resolveIssueId(issueKey: string): Promise<number> {
 
 // — server —
 const server = new McpServer({ name: 'tempo-mcp', version: '1.0.0' });
+
+server.registerTool(
+  'calculate_session_time',
+  {
+    description:
+      'Calculate active session time automatically from OpenCode timestamps. ' +
+      'Subtracts eligible attended meeting overlaps when meetings are provided.',
+    inputSchema: z.object({
+      timestamps: z.array(z.string()).describe('OpenCode session timestamps in ISO 8601 format'),
+      gapThresholdMinutes: z.number().int().positive().optional().describe('Idle gap threshold, defaults to 60 minutes'),
+      meetings: z.array(z.record(z.string(), z.unknown())).optional().describe('Calendar events to subtract from active time'),
+    }),
+  },
+  async ({ timestamps, gapThresholdMinutes, meetings }) => {
+    const result = await calculateSessionTime(JSON.stringify({
+      timestamps,
+      gap_threshold_minutes: gapThresholdMinutes ?? 60,
+      meetings: meetings ?? [],
+    }));
+    return { content: [{ type: 'text' as const, text: result }] };
+  },
+);
 
 server.registerTool(
   'log_time',
