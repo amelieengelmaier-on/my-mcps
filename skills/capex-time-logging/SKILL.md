@@ -7,6 +7,10 @@ description: Review-first Jira CapEx and Tempo time logging. Use when logging ti
 
 Use Jira as the source of truth for the CAPEX initiative. Never infer a financial code or Tempo account key from ticket text, project key, summary, branch name, or memory. A Jira CAPEX Code and Tempo account key are related initiative identifiers, but they are not assumed to be identical.
 
+## Obsidian sessions
+
+For the session-processing workflow, read [`tempo-in-obsidian.md`](tempo-in-obsidian.md). Keep this skill focused on Jira/Tempo safety and use that reference for session metadata, duration, dry runs, and write-back.
+
 ## Required Jira fields
 
 - Read the local `jira_capex_fields.capex` and `jira_capex_fields.code` values
