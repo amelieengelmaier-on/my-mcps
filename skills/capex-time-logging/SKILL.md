@@ -32,8 +32,11 @@ For the session-processing workflow, read [`tempo-in-obsidian.md`](tempo-in-obsi
     - the configured CapEx code field ID
 3. Fetch the parent issue key, if any.
 4. Read the Jira `CAPEX Code`. If it is already set, show it. If it is empty,
-   ask the user for the exact CAPEX Code. Sibling issues and Jira metadata may
-   suggest valid values, but they must never be selected automatically.
+    consult `capex_initiatives` in `~/.config/opencode/tempo-session.yaml` for a
+    matching, explicitly scoped suggestion. A dictionary match is evidence only:
+    ask the user to confirm the exact CAPEX Code. If there is no match, ask the
+    user for the exact CAPEX Code. Sibling issues and Jira metadata may also
+    suggest valid values, but they must never be selected automatically.
 
 5. If `CAPEX Code` is empty, query sibling issues with `parent = <parent key>` and these fields:
     - the configured CapEx field ID
@@ -63,6 +66,23 @@ For the session-processing workflow, read [`tempo-in-obsidian.md`](tempo-in-obsi
    `tempo_list_work_attributes` to discover available Tempo values. Ask the
    user to confirm the Jira CAPEX Code and corresponding Tempo account key as a
    pair. Never create a hardcoded mapping table.
+
+The optional local dictionary uses this shape:
+
+```yaml
+capex_initiatives:
+  - name: Digital innovation build
+    capex_code: CSW_02
+    applies_to:
+      - SOX automation
+      - compliance automation
+    excludes:
+      - manual SOX or compliance work
+```
+
+Only an explicitly matching automation activity may produce the `CSW_02`
+suggestion. The dictionary must never override a Jira value or remove the
+confirmation step.
 
 ## Write shapes
 
@@ -95,6 +115,7 @@ If Jira returns a different field shape, preserve that shape and replace only th
 - Do not set either CapEx field without confirmation.
 - Do not auto-pick from multiple codes.
 - Do not use project-prefix mappings.
+- Do not treat a dictionary match as user confirmation.
 - Do not classify with an LLM.
 - Do not continue with an empty or unconfirmed Jira ticket.
 - Do not continue with an empty or unconfirmed Jira CAPEX Code.

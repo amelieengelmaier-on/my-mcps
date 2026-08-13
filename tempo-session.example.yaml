@@ -8,3 +8,11 @@ tempo_account_key: ""
 jira_capex_fields:
   capex: ""
   code: ""
+capex_initiatives:
+  - name: Digital innovation build
+    capex_code: CSW_02
+    applies_to:
+      - SOX automation
+      - compliance automation
+    excludes:
+      - manual SOX or compliance work

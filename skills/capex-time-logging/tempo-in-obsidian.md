@@ -46,4 +46,10 @@ Use the optional local configuration file when available:
 
 Keep credentials and personal Tempo account keys in the MCP environment or another approved secret store, never in the session note or shared skill files.
 
+The local config may also contain `capex_initiatives`, a small initiative-to-code
+dictionary. Use it only to make a scoped suggestion. For example, `CSW_02` may
+be suggested for explicitly identified SOX or compliance automation work under
+the Digital innovation build initiative. It must not be suggested for manual
+SOX/compliance work, and the user must still confirm it against Jira.
+
 Calendar subtraction is opt-in. If it is disabled or unavailable, calculate time from the session timestamps without calling Calendar.
